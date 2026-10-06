@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GRILL CHAT</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #eef7ff, #ffffff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #222;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 430px;
+      min-height: 100vh;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 30px 25px;
+    }
+
+    .logo {
+      width: 82px;
+      height: 82px;
+      border-radius: 25px;
+      background: linear-gradient(135deg, #08a9ff, #0078ff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      color: white;
+      font-size: 38px;
+      font-weight: bold;
+      box-shadow: 0 12px 30px rgba(0,130,255,.25);
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #777;
+      margin-bottom: 35px;
+      font-size: 15px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.08);
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    input {
+      width: 100%;
+      height: 52px;
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      padding: 0 15px;
+      font-size: 16px;
+      outline: none;
+      margin-bottom: 15px;
+    }
+
+    input:focus {
+      border-color: #159fff;
+      box-shadow: 0 0 0 3px rgba(21,159,255,.1);
+    }
+
+    button {
+      width: 100%;
+      height: 52px;
+      border: none;
+      border-radius: 14px;
+      background: #129cf5;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+
+    button:active {
+      transform: scale(.98);
+    }
+
+    #otpSection {
+      display: none;
+      margin-top: 20px;
+    }
+
+    #recaptcha-container {
+      margin: 15px 0;
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 14px;
+      color: #666;
+      min-height: 20px;
+    }
+
+    .success {
+      color: #159447;
+    }
+
+    .error {
+      color: #d93025;
+    }
+
+    .welcome {
+      display: none;
+      text-align: center;
+    }
+
+    .welcome h2 {
+      margin-bottom: 10px;
+    }
+
+    .welcome p {
+      color: #777;
+      margin-bottom: 20px;
+    }
+
+    .logout {
+      background: #222;
+    }
+
+    .footer {
+      text-align: center;
+      color: #aaa;
+      font-size: 12px;
+      margin-top: 25px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <!-- LOGIN -->
+  <div id="loginScreen">
+
+    <div class="logo">G</div>
+
+    <h1>GRILL CHAT</h1>
+    <p class="subtitle">Connect with people you add</p>
+
+    <div class="card">
+
+      <label for="phone">Phone Number</label>
+
+      <input
+        type="tel"
+        id="phone"
+        placeholder="+8801XXXXXXXXX"
+        autocomplete="tel"
+      >
+
+      <div id="recaptcha-container"></div>
+
+      <button id="sendOtpBtn">
+        Send OTP
+      </button>
+
+      <div id="otpSection">
+
+        <label for="otp">Enter OTP</label>
+
+        <input
+          type="number"
+          id="otp"
+          placeholder="6 digit OTP"
+          inputmode="numeric"
+        >
+
+        <button id="verifyOtpBtn">
+          Verify & Login
+        </button>
+
+      </div>
+
+      <div id="status" class="status"></div>
+
+    </div>
+
+    <div class="footer">
+      Secure phone verification powered by Firebase
+    </div>
+
+  </div>
+
+
+  <!-- AFTER LOGIN -->
+  <div id="welcomeScreen" class="welcome">
+
+    <div class="logo">G</div>
+
+    <h2>Welcome to GRILL CHAT</h2>
+
+    <p id="userPhone"></p>
+
+    <button class="logout" id="logoutBtn">
+      Logout
+    </button>
+
+  </div>
+
+</div>
+
+
+<script type="module">
+
+  // Firebase
+  import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+
+  import {
+    getAuth,
+    RecaptchaVerifier,
+    signInWithPhoneNumber,
+    onAuthStateChanged,
+    signOut
+  } from
+    "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+  import {
+    getDatabase,
+    ref,
+    set
+  } from
+    "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+
+
+  // YOUR FIREBASE CONFIG
+  const firebaseConfig = {
+    apiKey: "AIzaSyCbmJ_hm7iNLSC1yfi6f1iV4vNN6xJrpGE",
+    authDomain: "gril-c0fa3.firebaseapp.com",
+    projectId: "gril-c0fa3",
+    storageBucket: "gril-c0fa3.firebasestorage.app",
+    messagingSenderId: "1046537034139",
+    appId: "1:1046537034139:web:6d71acf5e5fde708ef693e"
+  };
+
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+
+  const auth = getAuth(app);
+
+  const db = getDatabase(app);
+
+
+  // Elements
+  const phoneInput = document.getElementById("phone");
+  const otpInput = document.getElementById("otp");
+
+  const sendOtpBtn = document.getElementById("sendOtpBtn");
+  const verifyOtpBtn = document.getElementById("verifyOtpBtn");
+
+  const otpSection = document.getElementById("otpSection");
+
+  const status = document.getElementById("status");
+
+  const loginScreen = document.getElementById("loginScreen");
+  const welcomeScreen = document.getElementById("welcomeScreen");
+
+  const userPhone = document.getElementById("userPhone");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+
+  // Status message
+  function showStatus(message, type = "") {
+    status.textContent = message;
+    status.className = "status " + type;
+  }
+
+
+  // reCAPTCHA
+  window.recaptchaVerifier = new RecaptchaVerifier(
+    auth,
+    "recaptcha-container",
+    {
+      size: "normal"
+    }
+  );
+
+
+  // SEND OTP
+  sendOtpBtn.addEventListener("click", async () => {
+
+    const phoneNumber = phoneInput.value.trim();
+
+    if (!phoneNumber) {
+      showStatus("ফোন নম্বর লিখো।", "error");
+      return;
+    }
+
+    if (!phoneNumber.startsWith("+")) {
+      showStatus(
+        "নম্বরটি country code সহ লিখো। যেমন: +8801XXXXXXXXX",
+        "error"
+      );
+      return;
+    }
+
+    sendOtpBtn.disabled = true;
+    sendOtpBtn.textContent = "Sending...";
+
+    try {
+
+      const appVerifier = window.recaptchaVerifier;
+
+      const confirmationResult =
+        await signInWithPhoneNumber(
+          auth,
+          phoneNumber,
+          appVerifier
+        );
+
+      window.confirmationResult = confirmationResult;
+
+      otpSection.style.display = "block";
+
+      showStatus(
+        "OTP তোমার ফোনে পাঠানো হয়েছে।",
+        "success"
+      );
+
+      sendOtpBtn.textContent = "OTP Sent";
+
+    } catch (error) {
+
+      console.error(error);
+
+      showStatus(
+        "OTP পাঠানো যায়নি: " + error.message,
+        "error"
+      );
+
+      sendOtpBtn.disabled = false;
+      sendOtpBtn.textContent = "Send OTP";
+
+      try {
+        window.recaptchaVerifier.clear();
+
+        window.recaptchaVerifier =
+          new RecaptchaVerifier(
+            auth,
+            "recaptcha-container",
+            {
+              size: "normal"
+            }
+          );
+      } catch (e) {}
+
+    }
+
+  });
+
+
+  // VERIFY OTP
+  verifyOtpBtn.addEventListener("click", async () => {
+
+    const code = otpInput.value.trim();
+
+    if (!code) {
+      showStatus("OTP লিখো।", "error");
+      return;
+    }
+
+    if (!window.confirmationResult) {
+      showStatus(
+        "আগে Send OTP চাপো।",
+        "error"
+      );
+      return;
+    }
+
+    verifyOtpBtn.disabled = true;
+    verifyOtpBtn.textContent = "Verifying...";
+
+    try {
+
+      const result =
+        await window.confirmationResult.confirm(code);
+
+      const user = result.user;
+
+      // Save basic user information
+      await set(
+        ref(db, "users/" + user.uid),
+        {
+          uid: user.uid,
+          phoneNumber: user.phoneNumber,
+          lastLogin: Date.now()
+        }
+      );
+
+      showStatus(
+        "Login successful!",
+        "success"
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      showStatus(
+        "OTP ভুল অথবা মেয়াদ শেষ হয়েছে।",
+        "error"
+      );
+
+      verifyOtpBtn.disabled = false;
+      verifyOtpBtn.textContent = "Verify & Login";
+
+    }
+
+  });
+
+
+  // AUTH STATE
+  onAuthStateChanged(auth, (user) => {
+
+    if (user) {
+
+      loginScreen.style.display = "none";
+
+      welcomeScreen.style.display = "block";
+
+      userPhone.textContent =
+        user.phoneNumber || "Phone verified";
+
+    } else {
+
+      loginScreen.style.display = "block";
+
+      welcomeScreen.style.display = "none";
+
+    }
+
+  });
+
+
+  // LOGOUT
+  logoutBtn.addEventListener("click", async () => {
+
+    await signOut(auth);
+
+    location.reload();
+
+  });
+
+</script>
+
+</body>
+  </html>
